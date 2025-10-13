@@ -37,15 +37,15 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl max-w-2xl w-full border border-white/20 max-h-[90vh] overflow-y-auto">
-        <div className="p-8">
-          <div className="flex items-center justify-between mb-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      <div className="bg-white rounded-xl shadow-lg max-w-2xl w-full border border-gray-200 max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-xl font-semibold text-gray-900">
                 {user ? "Edit User" : "Add New User"}
               </h2>
-              <p className="text-gray-600 mt-1">
+              <p className="text-gray-500 text-sm mt-1">
                 {user ? "Update user information" : "Create a new team member"}
               </p>
             </div>
@@ -58,7 +58,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
                   First Name *
@@ -67,7 +67,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                   type="text"
                   value={fname}
                   onChange={(e) => setFname(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors bg-white/80 backdrop-blur-sm"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter first name"
                   required
                 />
@@ -81,7 +81,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                   type="text"
                   value={lname}
                   onChange={(e) => setLname(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors bg-white/80 backdrop-blur-sm"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter last name"
                   required
                 />
@@ -96,7 +96,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors bg-white/80 backdrop-blur-sm"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Enter email address"
                 required
               />
@@ -109,7 +109,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
               <select
                 value={primaryRole}
                 onChange={(e) => setPrimaryRole(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors bg-white/80 backdrop-blur-sm"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               >
                 {roleOptions.map(({ value, label }) => (
@@ -120,17 +120,17 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
               </select>
             </div>
 
-            <div className="flex gap-3 pt-6 border-t border-gray-200">
+            <div className="flex gap-3 pt-4 border-t border-gray-200">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium bg-white/80 backdrop-blur-sm"
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all font-medium shadow-lg shadow-blue-500/25"
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
                 {user ? "Save Changes" : "Add User"}
               </button>
