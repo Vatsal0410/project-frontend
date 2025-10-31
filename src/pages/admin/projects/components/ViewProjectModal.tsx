@@ -1,11 +1,9 @@
 // components/ViewProjectModal.tsx
-import React from "react";
+import React, { useEffect } from "react";
 import { Calendar, Flag, Users, X } from "lucide-react";
-import {
-  getInitials,
-} from "../types";
 import MemberBadge from "./MemberBadge";
 import type { IProject } from "../../../../types/Project";
+import { getInitials } from "../../../../types/User";
 
 interface ViewProjectModalProps {
   project: IProject;
@@ -26,9 +24,18 @@ const ViewProjectModal: React.FC<ViewProjectModalProps> = ({
     });
   };
 
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
         
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
