@@ -2,6 +2,8 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import { type Project,type User } from "../types";
+import axios from "axios";
+import { getToken } from "../../../../utils/utils";
 
 interface AddProjectModalProps {
   project: Project | null;
@@ -23,13 +25,45 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({
   const [startDate, setStartDate] = useState(project?.start_date.slice(0, 10) || "");
   const [endDate, setEndDate] = useState(project?.end_date.slice(0, 10) || "");
   const [leaderId, setLeaderId] = useState(project?.leaderId || "");
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const token = getToken()
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!title.trim() || !startDate || !endDate) {
       alert("Please fill in all required fields");
       return;
+    }
+
+    setLoading(true)
+
+    try {
+      const res = await axios.post("http://localhost:3000/api/projects", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          start_date: startDate + "T00:00:00.000Z",
+          end_date: endDate + "T00:00:00.000Z",
+          leaderId: leaderId || null,
+        }),
+      })
+
+      if(res.status === 200) {
+        console.log("Project added successfully")
+        console.log(res);
+        
+        setLoading(false)
+      }
+    }
+    catch (error) {
+      console.log(`Failed to add project: ${error}`)
     }
 
     const projectData = {

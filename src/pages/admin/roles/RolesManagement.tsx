@@ -1,6 +1,6 @@
 import axios from "axios";
-import Cookies from "js-cookie";
 import { useState, useEffect } from "react";
+import { getToken } from "../../../utils/utils";
 
 interface Roles {
   id: string;
@@ -74,7 +74,7 @@ function RolesManagement() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(false);
 
-  const token = Cookies.get("token");
+  const token = getToken()
 
   const fetchUsers = async () => {
     setLoading(true);

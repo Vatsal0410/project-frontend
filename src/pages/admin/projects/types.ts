@@ -6,9 +6,7 @@ import {
   AlertCircle, 
   Archive, 
   ListTodo, 
-  Bug,
-  Calendar,
-  Users 
+  Bug, 
 } from "lucide-react";
 
 export type ProjectStatus = "active" | "completed" | "upcoming" | "cancelled" | "archived";
@@ -62,33 +60,7 @@ export interface Project {
 }
 
 // Helper functions
-export function getProjectStatus(project: Project): ProjectStatus {
-  const now = new Date();
-  const startDate = new Date(project.start_date);
-  const endDate = new Date(project.end_date);
 
-  if (project.deleted_at) return "archived";
-  if (now < startDate) return "upcoming";
-  if (now > endDate) return "completed";
-  return "active";
-}
-
-export function getStatusInfo(status: ProjectStatus) {
-  switch (status) {
-    case "active":
-      return { label: "Active", color: "bg-green-100 text-green-800", icon: PlayCircle };
-    case "completed":
-      return { label: "Completed", color: "bg-blue-100 text-blue-800", icon: CheckCircle };
-    case "upcoming":
-      return { label: "Upcoming", color: "bg-yellow-100 text-yellow-800", icon: Clock };
-    case "cancelled":
-      return { label: "Cancelled", color: "bg-red-100 text-red-800", icon: AlertCircle };
-    case "archived":
-      return { label: "Archived", color: "bg-gray-100 text-gray-800", icon: Archive };
-    default:
-      return { label: "Unknown", color: "bg-gray-100 text-gray-800", icon: AlertCircle };
-  }
-}
 
 export function getInitials(fname: string, lname: string) {
   return `${fname.charAt(0)}${lname.charAt(0)}`.toUpperCase();
