@@ -100,7 +100,6 @@ const UsersManagement: React.FC = () => {
     try {
       const fetchedUsers: IUser[] = await userService.fetchAllUsers(token);
       setUsers(fetchedUsers);
-      console.log(fetchedUsers);
     } catch (err: any) {
       console.error("Error fetching users:", err);
       toastError(err.message || "API request for fetching users failed.");
@@ -263,7 +262,7 @@ const UsersManagement: React.FC = () => {
     }
   };
 
-  const handleAddUserClick = () => {
+  const handleAddUser = () => {
     setEditingUser(null);
     setShowUserFormModal(true);
   };
@@ -289,7 +288,6 @@ const UsersManagement: React.FC = () => {
           toastSuccess(
             `${userData.fname} ${userData.lname} updated successfully`
           );
-          console.log("User updated:", userData);
           await fetchUsers();
         } else {
           toastError("Failed to update user.");
@@ -310,7 +308,6 @@ const UsersManagement: React.FC = () => {
           toastSuccess(
             `${userData.fname} ${userData.lname} created successfully`
           );
-          console.log("User created:", userData);
           await fetchUsers();
         } else {
           console.error("Error creating user:", res);
@@ -351,7 +348,7 @@ const UsersManagement: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString("en-IN", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -418,7 +415,7 @@ const UsersManagement: React.FC = () => {
             {showDeletedUsers ? "Hide Archived Users" : "Show Archived Users"}
           </button>
           <button
-            onClick={handleAddUserClick}
+            onClick={handleAddUser}
             className="inline-flex items-center px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg shadow-blue-500/25"
           >
             <Plus size={20} className="mr-2" />
@@ -613,9 +610,6 @@ const UsersManagement: React.FC = () => {
                     <th className="px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       <SortButton field="name" label="User" />
                     </th>
-                    {/* <th className="px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      <SortButton field="role" label="Role" />
-                    </th> */}
                     <th className="px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       <SortButton field="role" label="Admin" />
                     </th>
@@ -637,7 +631,7 @@ const UsersManagement: React.FC = () => {
                     return (
                       <tr
                         key={user.id}
-                        className="hover:bg-gray-50 transition-colors bg-blue-50"
+                        className="hover:bg-blue-50 transition-colors bg-gray-50"
                       >
                         <td className="px-6 py-4 text-sm font-semibold">
                           {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}
@@ -663,13 +657,6 @@ const UsersManagement: React.FC = () => {
                             </div>
                           </div>
                         </td>
-                        {/* <td className="px-6 py-4 whitespace-nowrap">
-                          {user.is_admin ? (
-                            "-"
-                          ) : (
-                            <RoleBadge role={globalRole} />
-                          )}
-                        </td> */}
                         <td className="px-6py-4 whitespace-nowrap">
                           <AdminBadge isAdmin={user.is_admin} size="md" />
                         </td>

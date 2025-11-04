@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useState, type FC } from "react";
-import { getProjectStatus, type IProject } from "../../../types/Project";
+import {
+  getProjectStatus,
+  type IProject,
+  type ProjectStatus,
+} from "../../../types/Project";
 import { getToken, navigateToLogin } from "../../../utils/utils";
 import { useNavigate } from "react-router-dom";
-import { useConfirm } from "../../../contexts/ConfirmationContext";
 import { projectService } from "../../../services/projectService";
 import { toastError, toastSuccess } from "../../../utils/toasts";
 import {
   Archive,
   ArchiveRestore,
-  ArrowDown,
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
@@ -17,14 +19,13 @@ import {
   Flag,
   FolderArchive,
   FolderCheck,
-  FolderCode,
   FolderOpen,
   Folders,
   Grid,
-  Package,
   Plus,
   Search,
   Table,
+  TriangleAlert,
   Users,
   X,
 } from "lucide-react";
@@ -43,7 +44,7 @@ type sortOrder = "asc" | "desc";
 
 interface Filters {
   search: string;
-  status: "ALL" | "active" | "completed" | "archived";
+  status: ProjectStatus | "ALL";
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -69,7 +70,7 @@ const ProjectsManagement: FC = () => {
   // const token = getToken();
   const token = getToken();
   const navigate = useNavigate();
-  const { confirm, setLoading: setConfirmLoading } = useConfirm();
+  // const { confirm, setLoading: setConfirmLoading } = useConfirm();
 
   // Debounced search
   useEffect(() => {
@@ -78,9 +79,10 @@ const ProjectsManagement: FC = () => {
       setCurrentPage(1);
     }, 300);
 
-    return clearTimeout(timer);
+    return () => clearTimeout(timer); // Proper cleanup
   }, [searchDebounce]);
 
+  // Fetch all projects
   useEffect(() => {
     if (token) {
       fetchProjects();
@@ -104,7 +106,6 @@ const ProjectsManagement: FC = () => {
         token
       );
       setProjects(fetchedProjects);
-      console.log(fetchedProjects);
     } catch (err: any) {
       console.error("Error fetching projects:", err);
       toastError("Failed to fetch projects.");
@@ -114,23 +115,23 @@ const ProjectsManagement: FC = () => {
   };
 
   // Stats
-  const stats = useMemo(
-    () => ({
-      total: projects?.length || 0,
-      active:
-        projects?.filter((p) => getProjectStatus(p) === "active").length || 0,
-      completed:
-        projects?.filter((p) => getProjectStatus(p) === "completed").length ||
-        0,
-      archived:
-        projects?.filter((p) => getProjectStatus(p) === "archived").length || 0,
-    }),
-    [projects]
-  );
+  const stats = useMemo(() => {
+    if (!projects) {
+      return { total: 0, active: 0, archived: 0, completed: 0 };
+    }
+
+    return {
+      total: projects.length,
+      active: projects.filter((p) => p.status === "ACTIVE").length,
+      archived: projects.filter((p) => p.status === "ARCHIVED").length,
+      completed: projects.filter((p) => p.status === "COMPLETED").length,
+    };
+  }, [projects]);
 
   // Filters and sorting
   const filteredAndSortedProjects = useMemo(() => {
     if (!projects) return [];
+
     let filtered = projects.filter((project) => {
       const matchesSearch =
         project.title.toLowerCase().includes(filters.search.toLowerCase()) ||
@@ -140,13 +141,8 @@ const ProjectsManagement: FC = () => {
         `${project.leader.fname} ${project.leader.lname}`
           .toLowerCase()
           .includes(filters.search.toLowerCase());
-
       const matchesStatus =
-        filters.status === "ALL"
-          ? true
-          : filters.status === "active"
-          ? getProjectStatus(project) === "active"
-          : getProjectStatus(project) === "completed";
+        filters.status === "ALL" || project.status === filters.status;
 
       return matchesSearch && matchesStatus;
     });
@@ -256,51 +252,22 @@ const ProjectsManagement: FC = () => {
     }
   };
 
-  // Delete Project
-  const handleDeleteProject = async (project: IProject) => {
-    const confirmed = await confirm({
-      title: "Archive Project",
-      message: `Are you sure you want to archive ${project.title}? This action can be reversed later.`,
-      type: "warning",
-      confirmText: "Yes, Archive",
-      cancelText: "Cancel",
-    });
-
-    if (confirmed) {
-      setConfirmLoading(true);
-      try {
-        await projectService.deleteProject(project.id, token!);
-        await fetchProjects();
-        toastSuccess(`${project.title} archived successfully`);
-      } catch (err: any) {
-        console.error("Error archiving project:", err);
-        toastError(err.message || "Failed to archive project.");
-      } finally {
-        setConfirmLoading(false);
-      }
+  // handle project status
+  const handleStatusChange = async (
+    project: IProject,
+    newStatus: ProjectStatus
+  ) => {
+    if (!token) {
+      navigateToLogin();
+      return;
     }
-  };
-
-  // Restore Project
-  const handleRestoreProject = async (project: IProject) => {
-    const confirmed = await confirm({
-      title: "Restore Project",
-      message: `Are you sure you want to restore ${project.title}?`,
-      type: "success",
-      confirmText: "Yes, Restore",
-      cancelText: "Cancel",
-    });
-
-    if (confirmed) {
-      setConfirmLoading(true);
-      try {
-        await projectService.restoreProject(project.id, token!);
-        await fetchProjects();
-        toastSuccess(`${project.title} restored successfully`);
-      } catch (err: any) {
-        console.error("Error restoring project:", err);
-        toastError(err.message || "Failed to restore project.");
-      }
+    try {
+      await projectService.updateProjectStatus(project.id, newStatus, token);
+      toastSuccess(`${project.title} status updated to ${newStatus}`);
+      await fetchProjects();
+    } catch (err: any) {
+      console.error("Failed to update project status");
+      toastError(err.message || "Failed to update project status.");
     }
   };
 
@@ -470,12 +437,19 @@ const ProjectsManagement: FC = () => {
             {/* Status Filter */}
             <select
               value={filters.status}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  status: e.target.value as Filters["status"],
+                }))
+              }
               className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none text-sm min-w-[140px]"
             >
               <option value="ALL">All Status</option>
               <option value="ACTIVE">Active</option>
               <option value="ARCHIVED">Archived</option>
               <option value="COMPLETED">Completed</option>
+              <option value="PLANNING">Planning</option>
             </select>
 
             {/* clear filters */}
@@ -535,7 +509,7 @@ const ProjectsManagement: FC = () => {
 
       {/* Projects Table View */}
       {viewMode === "table" && (
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden text-center">
           <div className="overflow-x-auto">
             {loading ? (
               <LoadingSpinner />
@@ -575,19 +549,25 @@ const ProjectsManagement: FC = () => {
                       key={project.id}
                       className="hover:bg-gray-50 transition-colors"
                     >
+                      {/* Sr. No */}
                       <td className="px-6 py-4 text-sm font-semibold">
                         {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}
                       </td>
+                      {/* Project Title and Description */}
                       <td className="px-6 py-4">
                         <div>
-                          <div className="text-sm font-semibold text-gray-900">
+                          <div
+                            className="text-sm font-semibold text-gray-900"
+                            title={project.description}
+                          >
                             {project.title}
                           </div>
-                          <div className="text-sm text-gray-500 line-clamp-2">
+                          {/* <div className="text-sm text-gray-500 line-clamp-2">
                             {project.description}
-                          </div>
+                          </div> */}
                         </div>
                       </td>
+                      {/* Project Leader */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
@@ -603,32 +583,51 @@ const ProjectsManagement: FC = () => {
                           </div>
                         </div>
                       </td>
+                      {/* Project Members */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex items-center gap-2">
                           <Users size={16} className="text-gray-400" />
                           {project._count.members} members
                         </div>
                       </td>
+                      {/* Project Issues */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {project._count.issues} issues
                       </td>
+                      {/* Project Timeline */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div>
                           <div>Start: {formatDate(project.start_date)}</div>
                           <div>End: {formatDate(project.end_date)}</div>
                         </div>
                       </td>
+                      {/* Project Status */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                            project.deleted_at === null
+                        <select
+                          value={project.status}
+                          onChange={(e) =>
+                            handleStatusChange(
+                              project,
+                              e.target.value as ProjectStatus
+                            )
+                          }
+                          className={`text-xs font-medium rounded-md px-3 py-1 border-0 focus:ring-2 focus:ring-blue-500 ${
+                            project.status === "PLANNING"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : project.status === "ACTIVE"
                               ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-600"
+                              : project.status === "COMPLETED"
+                              ? "bg-purple-100 text-purple-800"
+                              : "bg-orange-100 text-orange-800"
                           }`}
                         >
-                          {project.deleted_at === null ? "Active" : "Archived"}
-                        </span>
+                          <option value="PLANNING">Planning</option>
+                          <option value="ACTIVE">Active</option>
+                          <option value="COMPLETED">Completed</option>
+                          <option value="ARCHIVED">Archived</option>
+                        </select>
                       </td>
+                      {/* Actions */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">
                           <button
@@ -640,42 +639,28 @@ const ProjectsManagement: FC = () => {
                           </button>
                           <button
                             onClick={() => handleEditProject(project)}
-                            disabled={project.deleted_at !== null}
+                            disabled={
+                              project.status !== "PLANNING" &&
+                              project.status !== "ACTIVE"
+                            }
                             className={`transition-colors p-1.5 rounded ${
-                              project.deleted_at !== null
+                              project.status === "ARCHIVED" ||
+                              project.status === "COMPLETED"
                                 ? "text-gray-400 cursor-not-allowed"
                                 : "text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50"
                             }`}
                             title={
-                              project.deleted_at !== null
-                                ? "Restore to Edit Archived Project"
+                              project.status === "ARCHIVED" ||
+                              project.status === "COMPLETED"
+                                ? `Restore to Edit ${
+                                    project.status === "ARCHIVED"
+                                      ? "Archived"
+                                      : "Completed"
+                                  } Project`
                                 : "Edit Project"
                             }
                           >
                             <Edit size={16} />
-                          </button>
-                          <button
-                            onClick={
-                              project.deleted_at === null
-                                ? () => handleDeleteProject(project)
-                                : () => handleRestoreProject(project)
-                            }
-                            className={`transition-colors p-1.5 rounded ${
-                              project.deleted_at === null
-                                ? "text-orange-600 hover:text-orange-900 hover:bg-orange-50"
-                                : "text-green-600 hover:text-green-900 hover:bg-green-50"
-                            }`}
-                            title={
-                              project.deleted_at === null
-                                ? "Archive Project"
-                                : "Restore Project"
-                            }
-                          >
-                            {project.deleted_at === null ? (
-                              <Archive size={16} />
-                            ) : (
-                              <ArchiveRestore size={16} />
-                            )}
                           </button>
                         </div>
                       </td>
@@ -684,57 +669,7 @@ const ProjectsManagement: FC = () => {
                 </tbody>
               </table>
             )}
-
-            {/* Empty state */}
-            {!loading && filteredAndSortedProjects.length === 0 && (
-              <div className="text-center py-16">
-                <Flag className="mx-auto h-16 w-16 text-gray-300" />
-                <h3 className="mt-4 text-lg font-medium text-gray-900">
-                  No projects found
-                </h3>
-                <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
-                  {hasActiveFilters
-                    ? "No projects match your current search criteria. Try adjusting your filters."
-                    : 'Get started by creating your first project using the "Add New Project" button.'}
-                </p>
-                {hasActiveFilters && (
-                  <button
-                    onClick={clearFilters}
-                    className="mt-4 px-4 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                  >
-                    Clear Filters
-                  </button>
-                )}
-              </div>
-            )}
           </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Page {currentPage} of {totalPages}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  onClick={() =>
-                    setCurrentPage((p) => Math.min(totalPages, p + 1))
-                  }
-                  disabled={currentPage === totalPages}
-                  className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -755,81 +690,120 @@ const ProjectsManagement: FC = () => {
                   }`}
                 >
                   {/* Header */}
-                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b border-blue-200">
-                    <div className="flex items-start justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
+                  <div className={`bg-gradient-to-r px-6 py-5 flex items-center border-b  min-h-[88px] ${
+                    project.status === "PLANNING"
+                      ? "from-yellow-100 to-yellow-200 border-yellow-200"
+                      : project.status === "ACTIVE"
+                      ? "from-green-100 to-green-200 border-green-200"
+                      : project.status === "COMPLETED"
+                      ? "from-purple-100 to-purple-200 border-purple-200"
+                      : "from-orange-100 to-orange-200 border-orange-200"
+                  }`}>
+                    <div className="flex items-center justify-between w-full">
+                      <h3
+                        className="text-md font-semibold text-gray-900 line-clamp-2"
+                        title={project.description}
+                      >
                         {project.title}
                       </h3>
                       <span
                         className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                          project.deleted_at === null
+                          project.status === "PLANNING"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : project.status === "ACTIVE"
                             ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-600"
+                            : project.status === "COMPLETED"
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-orange-100 text-orange-800"
                         }`}
                       >
-                        {project.deleted_at === null ? "Active" : "Archived"}
+                        {project.status}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">
-                      {project.description}
-                    </p>
                   </div>
 
                   {/* Content */}
-                  <div className="p-6 space-y-4">
-                    {/* Leader */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-500">
-                        Leader
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                          {getInitials(
-                            project.leader.fname,
-                            project.leader.lname
-                          )}
-                        </div>
-                        <span className="text-sm text-gray-900">
-                          {project.leader.fname} {project.leader.lname}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center gap-2">
-                        <Users size={16} className="text-gray-400" />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {project._count.members}
+                  <div className="p-6">
+                    {/* Leader with Card-like Style */}
+                    <div className="flex items-center justify-between rounded-lg mb-4">
+                      <span className="text-sm font-medium">Project Lead</span>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-gray-900">
+                            {project.leader.fname} {project.leader.lname}
                           </div>
-                          <div className="text-xs text-gray-500">Members</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Flag size={16} className="text-gray-400" />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {project._count.issues}
-                          </div>
-                          <div className="text-xs text-gray-500">Issues</div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Timeline */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Start:</span>
-                        <span className="text-gray-900">
-                          {formatDate(project.start_date)}
+                    {/* Stats with Enhanced Visual Design */}
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <Users size={18} className="text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-gray-900">
+                              {project._count.members}
+                            </div>
+                            <div className="text-xs text-gray-600 font-medium">
+                              Members
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <TriangleAlert size={18} className="text-red-600" />
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-gray-900">
+                              {project._count.issues}
+                            </div>
+                            <div className="text-xs text-gray-600 font-medium">
+                              Issues
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Timeline with Card Style */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span className="text-sm font-semibold text-gray-900">
+                          Timeline
                         </span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">End:</span>
-                        <span className="text-gray-900">
-                          {formatDate(project.end_date)}
-                        </span>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                            <span className="text-sm text-gray-600">
+                              Start Date
+                            </span>
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">
+                            {formatDate(project.start_date)}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                            <span className="text-sm text-gray-600">
+                              End Date
+                            </span>
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">
+                            {formatDate(project.end_date)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -846,34 +820,29 @@ const ProjectsManagement: FC = () => {
                       </button>
                       <button
                         onClick={() => handleEditProject(project)}
-                        disabled={project.deleted_at !== null}
+                        disabled={
+                          project.status !== "PLANNING" &&
+                          project.status !== "ACTIVE"
+                        }
                         className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                          project.deleted_at !== null
-                            ? "text-gray-400 bg-gray-100 cursor-not-allowed"
+                          project.status === "ARCHIVED" ||
+                          project.status === "COMPLETED"
+                            ? "text-gray-400 cursor-not-allowed"
                             : "text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50"
                         }`}
+                        title={
+                          project.status === "ARCHIVED" ||
+                          project.status === "COMPLETED"
+                            ? `Restore to Edit ${
+                                project.status === "ARCHIVED"
+                                  ? "Archived"
+                                  : "Completed"
+                              } Project`
+                            : "Edit Project"
+                        }
                       >
                         <Edit size={16} />
                         Edit
-                      </button>
-                      <button
-                        onClick={
-                          project.deleted_at === null
-                            ? () => handleDeleteProject(project)
-                            : () => handleRestoreProject(project)
-                        }
-                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                          project.deleted_at === null
-                            ? "text-orange-600 hover:text-orange-900 hover:bg-orange-50"
-                            : "text-green-600 hover:text-green-900 hover:bg-green-50"
-                        }`}
-                      >
-                        {project.deleted_at === null ? (
-                          <Archive size={16} />
-                        ) : (
-                          <ArchiveRestore size={16} />
-                        )}
-                        {project.deleted_at === null ? "Archive" : "Restore"}
                       </button>
                     </div>
                   </div>
@@ -881,57 +850,55 @@ const ProjectsManagement: FC = () => {
               ))
             )}
           </div>
-
-          {/* Empty State for Card View */}
-          {!loading && filteredAndSortedProjects.length === 0 && (
-            <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-              <Flag className="mx-auto h-16 w-16 text-gray-300" />
-              <h3 className="mt-4 text-lg font-medium text-gray-900">
-                No projects found
-              </h3>
-              <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
-                {hasActiveFilters
-                  ? "No projects match your current search criteria. Try adjusting your filters."
-                  : "Get started by creating your first project."}
-              </p>
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  className="mt-4 px-4 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                >
-                  Clear Filters
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Pagination for Card View */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-gray-200">
-              <div className="text-sm text-gray-500">
-                Page {currentPage} of {totalPages}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  onClick={() =>
-                    setCurrentPage((p) => Math.min(totalPages, p + 1))
-                  }
-                  disabled={currentPage === totalPages}
-                  className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          )}
         </>
+      )}
+
+      {/* Empty State for Card View */}
+      {!loading && filteredAndSortedProjects.length === 0 && (
+        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
+          <Flag className="mx-auto h-16 w-16 text-gray-300" />
+          <h3 className="mt-4 text-lg font-medium text-gray-900">
+            No projects found
+          </h3>
+          <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
+            {hasActiveFilters
+              ? "No projects match your current search criteria. Try adjusting your filters."
+              : "Get started by creating your first project."}
+          </p>
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="mt-4 px-4 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Pagination for Card View */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-gray-200">
+          <div className="text-sm text-gray-500">
+            Page {currentPage} of {totalPages}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Modals */}

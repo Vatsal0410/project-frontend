@@ -124,7 +124,7 @@ const UserFormModal: React.FC<UserFormModalProps> = ({
         is_admin: formData.is_admin,
       };
 
-      await onSave(userData);
+      onSave(userData);
     } catch (err: any) {
       console.error("Error saving user:", err);
     } finally {
@@ -133,8 +133,8 @@ const UserFormModal: React.FC<UserFormModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-gray-100 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="relative p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
