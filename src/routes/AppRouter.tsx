@@ -11,6 +11,8 @@ import MembersManagement from "../pages/admin/users/MembersManagement";
 import Layout from "../components/layout/Layout";
 import LoginPage from "../components/auth/LoginForm";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
+import ForgotPasswordPage from "../components/auth/ForgotPasswordPage";
+import ResetPasswordPage from "../components/auth/ResetPasswordPage";
 
 const AppRouterContent = () => {
   const {isAuthenticated, isAdmin} = useAuth()
@@ -18,34 +20,35 @@ const AppRouterContent = () => {
     <Routes>
         <Route
           path="/"
-          element={isAuthenticated ? <Navigate to={isAdmin ? "/dashboard" : "/user-dashboard"} /> : <Navigate to="/login" />}
+          element={isAuthenticated ? <Navigate to={isAdmin ? "/admin" : "/app"} /> : <Navigate to="/login" replace/>}
         />
         <Route path="/login" element={<LoginPage />} />
         
         <Route
-          path="/dashboard/*"
+          path="/admin/*"
           element={isAuthenticated && isAdmin ? (
             <Layout>
               <AdminRoutes />
             </Layout>
           ) : (
-            <Navigate to="/login" />
+            <Navigate to="/login" replace/>
           )}
         />
         
         <Route
-          path="/user-dashboard"
-          element={isAuthenticated ? <UserDashboard /> : <Navigate to="/login" />}
+          path="/app/*"
+          element={isAuthenticated ? <UserRoutes /> : <Navigate to="/login" replace/>}
         />
         
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
   )
 }
 
 const AppRouter = () => {
-  
-  
 
   return (
     <BrowserRouter>
@@ -71,6 +74,15 @@ const AdminRoutes = () => {
       
     </Routes>
   );
+}
+
+// UserRoutes
+const UserRoutes = () => {
+  return (
+    <Routes>
+      <Route path="/" element={<UserDashboard />} />
+    </Routes>
+  )
 }
 
 export default AppRouter;

@@ -324,28 +324,28 @@ const UsersManagement: React.FC = () => {
     setEditingUser(null);
   };
 
-  const handleExportCSV = () => {
-    console.log("Exporting users to CSV");
-    const csvContent = [
-      ["Name", "Email", "Role", "Status", "Joined"],
-      ...filteredAndSortedUsers.map((u) => [
-        `${u.fname} ${u.lname}`,
-        u.email,
-        getGlobalRole(u),
-        getUserStatus(u),
-        new Date(u.created_at).toLocaleDateString(),
-      ]),
-    ]
-      .map((row) => row.join(","))
-      .join("\n");
+  // const handleExportCSV = () => {
+  //   console.log("Exporting users to CSV");
+  //   const csvContent = [
+  //     ["Name", "Email", "Role", "Status", "Joined"],
+  //     ...filteredAndSortedUsers.map((u) => [
+  //       `${u.fname} ${u.lname}`,
+  //       u.email,
+  //       getGlobalRole(u),
+  //       getUserStatus(u),
+  //       new Date(u.created_at).toLocaleDateString(),
+  //     ]),
+  //   ]
+  //     .map((row) => row.join(","))
+  //     .join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `users_${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-  };
+  //   const blob = new Blob([csvContent], { type: "text/csv" });
+  //   const url = window.URL.createObjectURL(blob);
+  //   const a = document.createElement("a");
+  //   a.href = url;
+  //   a.download = `users_${new Date().toISOString().split("T")[0]}.csv`;
+  //   a.click();
+  // };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-IN", {
@@ -1041,4 +1041,4 @@ const UsersManagement: React.FC = () => {
   );
 };
 
-export default UsersManagement;
+export default UsersManagement; 
